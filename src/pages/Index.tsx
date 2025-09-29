@@ -1,31 +1,97 @@
-import { useState } from "react";
-import { LoginForm } from "@/components/auth/login-form";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { SuperAdminDashboard } from "@/components/dashboard/superadmin-dashboard";
 import { StudentDashboard } from "@/components/dashboard/student-dashboard";
+import type { User, Session } from "@supabase/supabase-js";
 
 const Index = () => {
-  const [user, setUser] = useState<{ role: string; name: string } | null>(null);
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<{ role: string; username: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogin = (role: string, credentials: any) => {
-    // Mock login - in real app, this would authenticate with backend
-    setUser({
-      role,
-      name: credentials.username || credentials.rollNo || "User"
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Fetch user profile
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+        }, 0);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role, username")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
-  if (!user) {
-    return <LoginForm onLogin={handleLogin} />;
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return null;
   }
 
   const renderDashboard = () => {
-    switch (user.role) {
+    switch (profile.role) {
       case 'superadmin':
         return <SuperAdminDashboard />;
       case 'student':
@@ -35,7 +101,7 @@ const Index = () => {
           <div className="container mx-auto p-6 text-center">
             <h2 className="text-2xl font-bold mb-4">Dashboard Coming Soon</h2>
             <p className="text-muted-foreground">
-              {user.role} dashboard is under development
+              {profile.role} dashboard is under development
             </p>
           </div>
         );
@@ -45,8 +111,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header 
-        userRole={user.role} 
-        userName={user.name} 
+        userRole={profile.role} 
+        userName={profile.username} 
         onLogout={handleLogout} 
       />
       <main className="flex-1">
