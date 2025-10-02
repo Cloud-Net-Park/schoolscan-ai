@@ -109,13 +109,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "classes_class_teacher_id_fkey"
-            columns: ["class_teacher_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "classes_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
@@ -236,15 +229,7 @@ export type Database = {
           username?: string
           working_time?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       qr_codes: {
         Row: {
@@ -384,7 +369,7 @@ export type Database = {
           {
             foreignKeyName: "students_profile_id_fkey"
             columns: ["profile_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -417,12 +402,7 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
-      user_role:
-        | "superadmin"
-        | "subadmin"
-        | "class_teacher"
-        | "sub_teacher"
-        | "student"
+      user_role: "student" | "subadmin" | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -560,13 +540,7 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
-      user_role: [
-        "superadmin",
-        "subadmin",
-        "class_teacher",
-        "sub_teacher",
-        "student",
-      ],
+      user_role: ["student", "subadmin", "superadmin"],
     },
   },
 } as const
